@@ -1,6 +1,7 @@
 build
 build/revision
 ._*
-*.xcodeproj/
-!*.xcodeproj/project.pbxproj
 Nightly.app.zip
+*.orig
+*.xcworkspace
+xcuserdata/
