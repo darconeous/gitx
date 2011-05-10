@@ -205,6 +205,11 @@ NSString* PBGitRepositoryErrorDomain = @"GitXErrorDomain";
 	[revisionList forceUpdate];
 }
 
+- (void) updateHistory
+{
+	[revisionList updateHistory];
+}
+
 - (BOOL)isDocumentEdited
 {
 	return NO;
@@ -272,18 +277,22 @@ NSString* PBGitRepositoryErrorDomain = @"GitXErrorDomain";
 		sha = [PBGitSHA shaWithString:[components objectAtIndex:2]];
 
 	NSMutableArray* curRefs;
-	if ( (curRefs = [refs objectForKey:sha]) != nil )
-		[curRefs addObject:ref];
-	else
+	if ( (curRefs = [refs objectForKey:sha]) != nil ) {
+		if(![curRefs containsObject:ref]) {
+			[curRefs addObject:ref];
+			hasChanged = 1;
+		}
+	} else {
 		[refs setObject:[NSMutableArray arrayWithObject:ref] forKey:sha];
+		hasChanged = 1;
+	}
 }
 
 - (void) reloadRefs
 {
 	_headRef = nil;
 	_headSha = nil;
-
-	refs = [NSMutableDictionary dictionary];
+	NSMutableDictionary* newRefs = [NSMutableDictionary dictionary];
 	NSMutableArray *oldBranches = [branches mutableCopy];
 
 	NSArray *arguments = [NSArray arrayWithObjects:@"for-each-ref", @"--format=%(refname) %(objecttype) %(objectname) %(*objectname)", @"refs", nil];
@@ -298,10 +307,27 @@ NSString* PBGitRepositoryErrorDomain = @"GitXErrorDomain";
 		NSArray *components = [line componentsSeparatedByString:@" "];
 
 		PBGitRef *newRef = [PBGitRef refFromString:[components objectAtIndex:0]];
-		PBGitRevSpecifier *revSpec = [[PBGitRevSpecifier alloc] initWithRef:newRef];
+		PBGitRevSpecifier *revSpec = [[[PBGitRevSpecifier alloc] initWithRef:newRef] autorelease];
 
 		[self addBranch:revSpec];
-		[self addRef:newRef fromParameters:components];
+
+		{
+			NSString* type = [components objectAtIndex:1];
+
+			PBGitSHA *sha;
+			if ([type isEqualToString:@"tag"] && [components count] == 4)
+				sha = [PBGitSHA shaWithString:[components objectAtIndex:3]];
+			else
+				sha = [PBGitSHA shaWithString:[components objectAtIndex:2]];
+
+			NSMutableArray* curRefs;
+			if ( (curRefs = [newRefs objectForKey:sha]) != nil ) {
+				[curRefs addObject:newRef];
+			} else {
+				[newRefs setObject:[NSMutableArray arrayWithObject:newRef] forKey:sha];
+			}
+		}
+
 		[oldBranches removeObject:revSpec];
 	}
 
@@ -309,8 +335,13 @@ NSString* PBGitRepositoryErrorDomain = @"GitXErrorDomain";
 		if ([branch isSimpleRef] && ![branch isEqual:[self headRef]])
 			[self removeBranch:branch];
 
-	[self willChangeValueForKey:@"refs"];
-	[self didChangeValueForKey:@"refs"];
+	if(![refs isEqual:newRefs]) {
+		[self willChangeValueForKey:@"refs"];
+		[refs autorelease];
+		refs = [newRefs retain];
+		[self didChangeValueForKey:@"refs"];
+		hasChanged = 1;
+	}
 	
 	[self.stashController reload];
 	[self.submoduleController reload];
@@ -520,6 +551,7 @@ NSString* PBGitRepositoryErrorDomain = @"GitXErrorDomain";
 	[branches addObject:branch];
 
 	[self didChange:NSKeyValueChangeInsertion valuesAtIndexes:newIndex forKey:@"branches"];
+	hasChanged = 1;
 	return branch;
 }
 
@@ -533,6 +565,7 @@ NSString* PBGitRepositoryErrorDomain = @"GitXErrorDomain";
 			[branches removeObject:rev];
 
 			[self didChange:NSKeyValueChangeRemoval valuesAtIndexes:oldIndex forKey:@"branches"];
+			hasChanged = 1;
 			return YES;
 		}
 	}

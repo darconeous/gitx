@@ -89,8 +89,20 @@ NSString * const kGitXRemoteRefPrefix = @"refs/remotes/";
 	return ([[ref componentsSeparatedByString:@"/"] count] > 3);
 }
 
+- (NSString*) description
+{
+	return [self ref];
+}
+
 - (BOOL) isEqualToRef:(PBGitRef *)otherRef
 {
+	return [ref isEqualToString:[otherRef ref]];
+}
+
+- (BOOL) isEqual:(id)otherRef
+{
+	if(![otherRef isKindOfClass:[PBGitRef self]])
+		return NO;
 	return [ref isEqualToString:[otherRef ref]];
 }
 

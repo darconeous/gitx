@@ -405,7 +405,8 @@
 
 - (IBAction) refresh:(id)sender
 {
-	[repository forceUpdateRevisions];
+	[repository reloadRefs];
+	[repository updateHistory];
 }
 
 - (void) updateView

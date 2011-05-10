@@ -141,6 +141,8 @@ static NSString * PBStringFromBranchFilterType(PBGitXBranchFilterType type) {
 - (id) initWithURL: (NSURL*) path;
 - (void) setup;
 - (void) forceUpdateRevisions;
+- (void) updateHistory;
+
 
 // for the scripting bridge
 - (void)findInModeScriptCommand:(NSScriptCommand *)command;
