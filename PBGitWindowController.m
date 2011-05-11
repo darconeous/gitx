@@ -27,7 +27,9 @@
 		return nil;
     
 	self.repository = theRepository;
-    
+
+    [self setShouldCascadeWindows:NO];
+
 	return self;
 }
 
